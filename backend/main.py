@@ -10,9 +10,9 @@ from mangum import Mangum
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
-from backend.config import RESUME_BUCKET, CANDIDATES_TABLE, ANALYSES_TABLE, MAX_PDF_BYTES
-from backend.skills import compare_skills
-from backend.claude_service import analyze_with_claude
+from config import RESUME_BUCKET, CANDIDATES_TABLE, ANALYSES_TABLE, MAX_PDF_BYTES
+from skills import compare_skills
+from claude_service import analyze_with_claude
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("resume-analyzer")

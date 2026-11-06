@@ -7,7 +7,7 @@ st.set_page_config(page_title="AI Resume Analyzer", page_icon="📄", layout="ce
 st.title("AI Resume Analyzer")
 st.caption("Compare your resume with a job description. AI feedback is optional.")
 
-api_base = os.getenv("API_BASE_URL", "").rstrip("/")
+api_base = os.getenv("API_BASE_URL", "https://y49i1qkwd5.execute-api.ap-southeast-2.amazonaws.com/prod").rstrip("/")
 if not api_base:
     st.error("Set API_BASE_URL to your deployed API Gateway base URL.")
     st.stop()
