@@ -27,7 +27,7 @@ Globals:
         CANDIDATES_TABLE: !Ref CandidatesTable
         ANALYSES_TABLE: !Ref AnalysesTable
         CLAUDE_SECRET_NAME: !Ref ClaudeSecretName
-        CLAUDE_MODEL: claude-haiku-5-5-latest
+        CLAUDE_MODEL: claude-haiku-5-5
 
 Resources:
   ResumeBucket:
