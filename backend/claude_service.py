@@ -2,7 +2,7 @@ import json
 import logging
 import boto3
 from anthropic import Anthropic
-from backend.config import CLAUDE_SECRET_NAME, CLAUDE_MODEL
+from config import CLAUDE_SECRET_NAME, CLAUDE_MODEL
 
 logger = logging.getLogger(__name__)
 secrets = boto3.client("secretsmanager")
