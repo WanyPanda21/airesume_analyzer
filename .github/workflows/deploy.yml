@@ -1,0 +1,66 @@
+name: Deploy AI Resume Analyzer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'template.yml'
+      - 'samconfig.toml'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-2' }}
+  STACK_NAME: ${{ vars.STACK_NAME || 'ai-resume-analyzer' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build SAM
+        run: sam build --template-file template.yml
+
+      - name: Deploy infrastructure and Lambda
+        run: |
+          sam deploy --stack-name "$STACK_NAME"             --region "$AWS_REGION"             --capabilities CAPABILITY_IAM             --resolve-s3             --no-confirm-changeset             --no-fail-on-empty-changeset
+
+      - name: Create or update Claude API key in Secrets Manager
+        env:
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          SECRET_NAME: ai-resume-analyzer/claude-api-key
+        run: |
+          if [ -z "$CLAUDE_API_KEY" ]; then
+            echo "CLAUDE_API_KEY GitHub secret is missing."
+            exit 1
+          fi
+          if aws secretsmanager describe-secret --secret-id "$SECRET_NAME" >/dev/null 2>&1; then
+            aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string "$CLAUDE_API_KEY"
+          else
+            aws secretsmanager create-secret --name "$SECRET_NAME" --secret-string "$CLAUDE_API_KEY"
+          fi
+
+      - name: Print API output
+        run: |
+          aws cloudformation describe-stacks --stack-name "$STACK_NAME"             --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" --output text

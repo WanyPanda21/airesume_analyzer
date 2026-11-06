@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AI Resume Analyzer - FastAPI, S3, DynamoDB, Claude API
+
+Parameters:
+  ClaudeSecretName:
+    Type: String
+    Default: ai-resume-analyzer/claude-api-key
+  ResumeBucketName:
+    Type: String
+    Default: ai-resume-analyzer-897545289521-ap-southeast-2
+  CandidatesTableName:
+    Type: String
+    Default: AIResumeAnalyzerCandidates
+  AnalysesTableName:
+    Type: String
+    Default: AIResumeAnalyzerAnalyses
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        RESUME_BUCKET: !Ref ResumeBucket
+        CANDIDATES_TABLE: !Ref CandidatesTable
+        ANALYSES_TABLE: !Ref AnalysesTable
+        CLAUDE_SECRET_NAME: !Ref ClaudeSecretName
+        CLAUDE_MODEL: claude-haiku-5-5-latest
+
+Resources:
+  ResumeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ResumeBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [PUT, GET, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  CandidatesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref CandidatesTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: candidate_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: candidate_id
+          KeyType: HASH
+
+  AnalysesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref AnalysesTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: analysis_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: analysis_id
+          KeyType: HASH
+
+  ResumeAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ai-resume-analyzer-api
+      CodeUri: backend/
+      Handler: main.handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ResumeBucketName
+        - S3WritePolicy:
+            BucketName: !Ref ResumeBucketName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CandidatesTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AnalysesTableName
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ClaudeSecretName}*
+      Events:
+        UploadUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ResumeAnalyzerApi
+            Path: /api/resumes/upload-url
+            Method: POST
+        Analyze:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ResumeAnalyzerApi
+            Path: /api/resumes/analyze
+            Method: POST
+        History:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ResumeAnalyzerApi
+            Path: /api/resumes/history
+            Method: GET
+        AnalysisDetail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ResumeAnalyzerApi
+            Path: /api/resumes/{analysis_id}
+            Method: GET
+
+  ResumeAnalyzerApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowHeaders: ['content-type']
+        AllowMethods: [GET, POST, OPTIONS]
+
+Outputs:
+  ApiBaseUrl:
+    Description: API Gateway base URL
+    Value: !Sub https://${ResumeAnalyzerApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod
+  ResumeBucketName:
+    Value: !Ref ResumeBucket
+  AnalysesTableName:
+    Value: !Ref AnalysesTable
