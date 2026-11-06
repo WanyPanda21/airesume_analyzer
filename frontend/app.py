@@ -73,4 +73,7 @@ if submitted:
             pass
         st.error(f"Request failed: {detail or exc}")
     except Exception as exc:
-        st.error(f"Unexpected error: {exc}")
+        st.error(f"Failed during: {step}")
+        st.error(f"HTTP Status: {exc.response.status_code}")
+        st.error(f"Request URL: {exc.response.url}")
+        st.error(f"Response: {exc.response.text}")
