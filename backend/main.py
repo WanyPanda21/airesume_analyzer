@@ -18,6 +18,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("resume-analyzer")
 
 app = FastAPI(title="AI Resume Analyzer", version="1.0.0")
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(
+        "Incoming request: method=%s path=%s",
+        request.method,
+        request.url.path
+    )
+
+    response = await call_next(request)
+
+    logger.info(
+        "Response: method=%s path=%s status=%s",
+        request.method,
+        request.url.path,
+        response.status_code
+    )
+
+    return response
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 candidate_table = dynamodb.Table(CANDIDATES_TABLE)
@@ -139,4 +157,4 @@ def get_analysis(analysis_id: str):
         logger.exception("Failed to retrieve analysis_id=%s", analysis_id)
         raise HTTPException(status_code=500, detail="Could not retrieve analysis.")
 
-handler = Mangum(app)
+handler = Mangum(app, api_gateway_base_path="/prod")
