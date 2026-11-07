@@ -169,7 +169,7 @@ EXISTING SKILL COMPARISON:
 
     response = client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=2500,
+        max_tokens=4096,
         messages=[
             {
                 "role": "user",
