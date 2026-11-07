@@ -170,7 +170,6 @@ EXISTING SKILL COMPARISON:
     response = client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=2500,
-        temperature=0,
         messages=[
             {
                 "role": "user",
